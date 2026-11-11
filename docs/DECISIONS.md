@@ -1,0 +1,83 @@
+# Decisions
+
+Every scope and design choice, why it was made, and what was rejected.
+Newest entries at the bottom. "Day N" says when the decision is (or will be) implemented.
+
+---
+
+## 1. Scope: all seven parts, depth in two of them (Day 0)
+
+The brief asks for seven parts and says "a few features done extensively beat many fitting minimal requirements". Every part is built; **Store + Search** and **Checkout** get the depth.
+
+| Part | Depth | What "done" means |
+|---|---|---|
+| Store | Deep | Filters (platform, region, price), sort, pagination, filter counts, all state in the URL |
+| Search | Deep | Header search on every page, suggestions while typing, typo and partial-name matching via `pg_trgm` |
+| Product page | Solid | Details + offers from several sellers, cheapest first |
+| Checkout | Deep | Server re-prices the cart, reserves keys, Stripe test-mode Checkout, webhook fulfilment, keys on the order page |
+| Auth | Solid | Register, log in, log out, database sessions in an httpOnly cookie, protected routes |
+| Homepage | Solid | Layout and every block's content come from the backend |
+| Styling | Solid | Tokens sampled from eneba.com, responsive down to phone width |
+
+**Cut, and why**
+
+- *A separately deployed service per homepage block*: each block gets its own endpoint, PHP class and data source instead. Same contract (the frontend renders only what it receives, one failing block does not break the page) without extra free-tier servers that each have their own cold start.
+- *Seller accounts, admin panel, CMS for the homepage*: sellers, offers, keys and banners are seed data. The brief is about the buyer.
+- *Server-side cart*: the cart lives in localStorage. The server never trusts its prices; it recalculates them at checkout.
+- *Emailing keys, password reset, email verification, OAuth*: the key is shown on the order page and in order history.
+- *A search engine (Meilisearch, Elastic, Algolia)*: `pg_trgm` handles typos and partial names inside the database we already have, which is enough for a catalogue of ~40 products.
+- *Reviews, wishlist, multiple currencies (EUR only), translations, VAT, refunds, rate limiting, SSR/SEO.*
+
+Size target: ~1,000 lines of PHP and ~2,000 lines of TypeScript/CSS, so every line can be explained in a 90-minute interview.
+
+## 2. One repository, two apps (Day 1)
+
+`frontend/` (React) deploys to Vercel and `backend/` (PHP) deploys to Render; each service is pointed at its own folder. One repo keeps API changes and the UI that uses them in the same commit.
+
+## 3. The browser only ever talks to one origin (Day 1)
+
+The frontend calls `/api/...` on its own domain. `frontend/vercel.json` forwards those requests to Render in production; `frontend/vite.config.ts` forwards them to `localhost:8000` in development.
+
+- **Why:** the login cookie (Day 4) is then a first-party cookie, which works in every browser. A cookie set by `onrender.com` while the page is on `vercel.app` would be a third-party cookie, and Safari blocks those. There is also no CORS to configure.
+- **Cost:** one extra hop through Vercel. Stripe's webhook (Day 5) calls Render directly because it is server-to-server.
+- **Rejected:** calling Render directly with a token in `localStorage`. Simpler to set up, but any XSS bug could read the token.
+- **To verify after deploying:** that Vercel's forwarding waits long enough for a sleeping Render instance to wake up. If it does not, the fallback is the rejected option above.
+
+## 4. Plain PHP, no framework (Day 1)
+
+A front controller (`public/index.php`), a ~60-line router and small classes. Composer is used only for autoloading (and later the Stripe SDK).
+
+- **Why:** every line in the request path is ours and can be explained; nothing happens by convention or "magic".
+- **Rejected:** Laravel/Symfony (huge surface to explain for ~10 endpoints); Slim (small, but adds PSR-7/middleware concepts we do not need).
+
+## 5. Errors: client errors vs. everything else (Day 1)
+
+Code throws `HttpException(404, 'Not found')` for errors the client should see. `index.php` turns those into `{"error": "..."}` with that status. Any other exception becomes a generic `500 Internal server error`, and the details go only to the server log, so stack traces and SQL never leak to the browser. The production `php.ini` also stops PHP from printing warnings into responses.
+
+## 6. Database connection from one URL, opened lazily (Day 1)
+
+`Database` takes the `DATABASE_URL` Neon provides and opens the PDO connection on the first query, so requests that never touch the database do not pay for a connection. PDO is set to throw on SQL errors and return rows as associative arrays.
+
+Locally we use a separate Neon **branch** (`dev`), so no local Postgres or Docker is needed and the production data stays clean.
+
+## 7. Render runs the API from a Dockerfile (Day 1)
+
+Render has no built-in PHP runtime. The image is the official `php:8.3-apache` plus `pdo_pgsql`. Apache serves only `public/`, sends every unknown URL to `index.php` (`FallbackResource`), and listens on the `$PORT` Render provides. Composer dependencies are installed in their own layer so code-only changes rebuild faster.
+
+## 8. Frontend: React Router + CSS Modules, nothing else (Day 1)
+
+- **Routing:** React Router's `BrowserRouter`/`Routes`; a `Layout` route wraps every page with the header and footer.
+- **Styling:** `styles/tokens.css` holds colours, font sizes and spacing sampled from eneba.com's computed styles (page `#4618ac`, cards `#1f0a4d`, yellow buttons `#fad318`, Metropolis font, square corners, 5px spacing steps). Components use CSS Modules, so class names cannot clash.
+- **Rejected:** Tailwind (long class strings to explain), UI kits (would not look like Eneba), Redux/TanStack Query (one small `useApi` hook covers our loading needs).
+- **Branding:** the logo is a text wordmark, not Eneba's logo file, and the footer says it is a demo with test payments only.
+
+## 9. Loading state is derived, not stored (Day 1)
+
+`useApi` stores the latest answer together with the path it belongs to. If the stored answer is for a different path, the hook reports `loading`. This avoids calling `setState` synchronously inside an effect (flagged by the linter as an extra render) and ignores answers that arrive after the user has moved on.
+
+## Planned (recorded now, implemented later)
+
+- **Money is stored as integer cents** (Day 2). Floats cannot represent 0.10 exactly.
+- **Stock is real key rows**, each `available → reserved → sold` (Day 2/5). Keys are reserved at checkout with `SELECT ... FOR UPDATE SKIP LOCKED`, so two buyers cannot pay for the last key.
+- **Fulfilment is idempotent** (Day 5): the same function is called by the Stripe webhook and by the order page (which asks Stripe if the order is still pending), so a missed or repeated webhook is harmless.
+- **Session tokens are random, and only their SHA-256 hash is stored** (Day 4). Logout deletes the row; a database leak does not leak working sessions.

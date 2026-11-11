@@ -1,0 +1,132 @@
+.top {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+/* Logo: a text wordmark with a gradient dot, not a copy of Eneba's logo file */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 32px;
+  font-weight: var(--font-weight-heavy);
+  letter-spacing: -1px;
+}
+
+.logoMark {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: conic-gradient(var(--color-cta), var(--color-danger), var(--color-accent), var(--color-teal), var(--color-cta));
+}
+
+.demoTag {
+  align-self: flex-start;
+  padding: 2px var(--space-1);
+  background: var(--color-cta);
+  color: var(--color-cta-text);
+  font-size: 10px;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+/* Search: a white-outlined box with heavy text, like eneba.com */
+.search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 57px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-text);
+  border-radius: var(--radius);
+}
+
+.search:focus-within {
+  border-color: var(--color-cta);
+}
+
+.searchIcon {
+  flex-shrink: 0;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+  border: 0;
+  outline: 0; /* the yellow border on .search shows focus instead */
+  font-size: 18px;
+  font-weight: var(--font-weight-heavy);
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-soft);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-weight: var(--font-weight-semibold);
+}
+
+.iconLink {
+  display: flex;
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+.divider {
+  color: var(--color-text-muted);
+}
+
+.categories {
+  background: var(--color-bg-deep);
+}
+
+.categoriesInner {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  gap: var(--space-5);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Phones: the search box drops to its own full-width row under the logo */
+@media (max-width: 768px) {
+  .top {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .logo {
+    font-size: 26px;
+  }
+
+  .actions {
+    margin-left: auto;
+  }
+
+  .search {
+    order: 1;
+    flex-basis: 100%;
+    height: 44px;
+  }
+
+  .searchInput {
+    font-size: var(--font-size-md);
+  }
+}

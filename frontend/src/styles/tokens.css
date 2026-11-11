@@ -1,0 +1,46 @@
+/*
+ * Design tokens sampled from eneba.com (computed styles, Nov 2026).
+ * Components use these variables instead of raw values, so the whole
+ * look can be adjusted in one place.
+ */
+:root {
+  /* Colours */
+  --color-bg: #4618ac;          /* page background */
+  --color-bg-deep: #351183;     /* category bar under the header */
+  --color-surface: #1f0a4d;     /* cards, dropdowns, footer */
+  --color-accent: #7a4edf;      /* badges, hover highlights */
+  --color-cta: #fad318;         /* primary buttons ("Shop now", "Add to cart") */
+  --color-cta-text: #000000;
+  --color-text: #ffffff;
+  --color-text-soft: #dcd8e6;   /* secondary text */
+  --color-text-muted: #b3aac9;  /* hints, "From" labels */
+  --color-region: #23c299;      /* region labels: GLOBAL, EUROPE */
+  --color-success: #84e916;     /* discounts, cashback */
+  --color-teal: #63e3c2;        /* cashback badge */
+  --color-danger: #eb002e;
+
+  /* Typography: Eneba uses Metropolis, mostly in heavy (800) weight */
+  --font-family: 'Metropolis', Arial, Helvetica, sans-serif;
+  --font-size-xs: 12px;   /* card titles, labels */
+  --font-size-sm: 14px;
+  --font-size-md: 16px;   /* body */
+  --font-size-lg: 22px;   /* prices */
+  --font-size-xl: 30px;   /* section headings */
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-heavy: 800;
+
+  /* Spacing: multiples of 5px, as on eneba.com */
+  --space-1: 5px;
+  --space-2: 10px;
+  --space-3: 15px;
+  --space-4: 20px;
+  --space-5: 30px;
+  --space-6: 40px;
+
+  /* Eneba uses square corners almost everywhere */
+  --radius: 0;
+
+  --content-width: 1280px;
+}

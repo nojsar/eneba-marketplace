@@ -1,0 +1,2 @@
+# Store and check out every text file with LF endings, so files built on Linux (Render) match the repo.
+* text=auto eol=lf
