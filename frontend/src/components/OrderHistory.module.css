@@ -1,0 +1,75 @@
+.note {
+  color: var(--color-text-soft);
+}
+
+.note a {
+  color: var(--color-cta);
+  font-weight: var(--font-weight-heavy);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.order {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-bg-deep);
+  border: 1px solid transparent;
+}
+
+.order:hover {
+  border-color: var(--color-teal);
+}
+
+.id {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-heavy);
+}
+
+.what {
+  flex: 1;
+  min-width: 160px;
+  font-weight: var(--font-weight-heavy);
+}
+
+.date {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.status {
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-heavy);
+  text-transform: uppercase;
+}
+
+.paid {
+  background: var(--color-success);
+  color: var(--color-surface);
+}
+
+.pending {
+  background: var(--color-cta);
+  color: var(--color-cta-text);
+}
+
+.cancelled {
+  background: var(--color-text-muted);
+  color: var(--color-surface);
+}
+
+.total {
+  min-width: 80px;
+  text-align: right;
+  font-weight: var(--font-weight-heavy);
+}

@@ -27,6 +27,25 @@ final class Database
         return $this->pdo ??= $this->connect();
     }
 
+    /**
+     * Runs $work inside a transaction: everything it wrote is committed if it returns,
+     * and undone if it throws. Returns whatever $work returns.
+     */
+    public function transaction(callable $work): mixed
+    {
+        $pdo = $this->pdo();
+        $pdo->beginTransaction();
+        try {
+            $result = $work();
+            $pdo->commit();
+
+            return $result;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    }
+
     private function connect(): PDO
     {
         $parts = parse_url($this->url);

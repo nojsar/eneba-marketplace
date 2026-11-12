@@ -1,5 +1,6 @@
 import { Link, useSearchParams } from 'react-router'
 import { useAuth } from '../state/authContext'
+import { useCart } from '../state/cartContext'
 import styles from './Header.module.css'
 import { CartIcon, UserIcon } from './icons'
 import { SearchBox } from './SearchBox'
@@ -8,6 +9,7 @@ export function Header() {
   const [params] = useSearchParams()
   const urlQuery = params.get('q') ?? ''
   const { user, loading } = useAuth()
+  const { count } = useCart()
 
   return (
     <header>
@@ -23,8 +25,13 @@ export function Header() {
         <SearchBox key={urlQuery} initialQuery={urlQuery} />
 
         <nav className={styles.actions} aria-label="Account">
-          <Link to="/cart" className={styles.iconLink} aria-label="Cart">
+          <Link to="/cart" className={styles.iconLink} aria-label={count > 0 ? `Cart, ${count} items` : 'Cart'}>
             <CartIcon />
+            {count > 0 && (
+              <span className={styles.badge} aria-hidden="true">
+                {count}
+              </span>
+            )}
           </Link>
           {/* Nothing until the session check answers, so "Log in" never flashes for a logged-in user */}
           {loading ? null : user ? (

@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router'
+import { OrderHistory } from '../components/OrderHistory'
 import { useAuth } from '../state/authContext'
 import styles from './AccountPage.module.css'
 
 const memberSince = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 
-/** Only reachable through <RequireAuth>, so there is always a user here. Order history joins on Day 5. */
+/** Only reachable through <RequireAuth>, so there is always a user here. */
 export function AccountPage() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -32,6 +33,9 @@ export function AccountPage() {
       <button type="button" className={styles.logout} onClick={handleLogout}>
         Log out
       </button>
+
+      <h2 className={styles.subtitle}>Your orders</h2>
+      <OrderHistory />
     </section>
   )
 }

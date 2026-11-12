@@ -5,7 +5,8 @@
     "license": "proprietary",
     "require": {
         "php": "^8.3",
-        "ext-pdo_pgsql": "*"
+        "ext-pdo_pgsql": "*",
+        "stripe/stripe-php": "^19"
     },
     "autoload": {
         "psr-4": {

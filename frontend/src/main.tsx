@@ -9,12 +9,15 @@ import './styles/tokens.css'
 import './styles/global.css'
 import { App } from './App'
 import { AuthProvider } from './state/AuthProvider'
+import { CartProvider } from './state/CartProvider'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
+        <CartProvider>
+          <App />
+        </CartProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

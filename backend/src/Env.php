@@ -39,11 +39,14 @@ final class Env
 
     public static function get(string $key): string
     {
-        $value = getenv($key);
-        if ($value === false || $value === '') {
-            throw new RuntimeException("Missing environment variable $key");
-        }
+        return self::optional($key) ?? throw new RuntimeException("Missing environment variable $key");
+    }
 
-        return $value;
+    /** For settings only some features need (e.g. Stripe keys): null if not set. */
+    public static function optional(string $key): ?string
+    {
+        $value = getenv($key);
+
+        return $value === false || $value === '' ? null : $value;
     }
 }

@@ -1,9 +1,11 @@
 import { Route, Routes } from 'react-router'
 import { Layout } from './components/Layout'
 import { AccountPage } from './pages/AccountPage'
+import { CartPage } from './pages/CartPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { OrderPage } from './pages/OrderPage'
 import { ProductPage } from './pages/ProductPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { StorePage } from './pages/StorePage'
@@ -19,6 +21,7 @@ export function App() {
         <Route path="product/:slug" element={<ProductPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
+        <Route path="cart" element={<CartPage />} />
 
         {/* Signed-in only */}
         <Route
@@ -26,6 +29,14 @@ export function App() {
           element={
             <RequireAuth>
               <AccountPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="orders/:id"
+          element={
+            <RequireAuth>
+              <OrderPage />
             </RequireAuth>
           }
         />

@@ -3,6 +3,7 @@ import { ApiError } from '../api/client'
 import type { ProductDetails } from '../api/types'
 import { useApi } from '../api/useApi'
 import { formatPrice } from '../lib/money'
+import { useCart } from '../state/cartContext'
 import { NotFoundPage } from './NotFoundPage'
 import styles from './ProductPage.module.css'
 
@@ -13,6 +14,7 @@ const releaseDate = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'l
 export function ProductPage() {
   const { slug = '' } = useParams()
   const state = useApi<ProductDetails>(`/products/${encodeURIComponent(slug)}`)
+  const cart = useCart()
 
   if (state.status === 'error') {
     if (state.error instanceof ApiError && state.error.status === 404) {
@@ -102,6 +104,17 @@ export function ProductPage() {
               {index === 0 && offer.stock > 0 && <span className={styles.badge}>Best price</span>}
               <span className={styles.stock}>{stockLabel(offer.stock)}</span>
               <span className={styles.offerPrice}>{formatPrice(offer.priceCents)}</span>
+              {/* The buyer picks a specific seller's offer, so that is what goes in the cart */}
+              {offer.stock > 0 &&
+                (cart.items.some((item) => item.offerId === offer.id) ? (
+                  <Link to="/cart" className={styles.inCart}>
+                    In cart ✓
+                  </Link>
+                ) : (
+                  <button type="button" className={styles.addToCart} onClick={() => cart.add(offer.id)}>
+                    Add to cart
+                  </button>
+                ))}
             </li>
           ))}
         </ul>

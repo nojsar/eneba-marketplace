@@ -60,6 +60,43 @@ export type HeroContent = { banners: Banner[] }
 /** Content of a "product_rail" block */
 export type RailContent = { items: ProductSummary[]; seeAllUrl: string | null }
 
+/** The product details carried by cart and order lines. */
+export type ProductRef = { slug: string; name: string; imageUrl: string; platform: string; region: string }
+
+export type CartLine = {
+  offerId: number
+  quantity: number
+  unitPriceCents: number
+  lineTotalCents: number
+  /** Keys this seller has available right now */
+  stock: number
+  /** e.g. "Only 2 left"; null when the line can be bought */
+  problem: string | null
+  seller: string
+  product: ProductRef
+}
+
+/** GET /api/cart: current prices and stock, computed by the server */
+export type CartQuote = { lines: CartLine[]; totalCents: number; canCheckout: boolean }
+
+export type OrderItem = {
+  offerId: number
+  quantity: number
+  unitPriceCents: number
+  seller: string
+  product: ProductRef
+  /** Only on GET /api/orders/{id}, and only once the order is paid */
+  keys?: string[]
+}
+
+export type Order = {
+  id: number
+  status: 'pending' | 'paid' | 'cancelled'
+  totalCents: number
+  createdAt: string
+  items: OrderItem[]
+}
+
 /** GET /api/products */
 export type ProductList = {
   items: ProductSummary[]
