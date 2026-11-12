@@ -1,0 +1,110 @@
+/* A white-outlined box with heavy text, like eneba.com */
+.search {
+  position: relative; /* the suggestion list is positioned against this box */
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 57px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-text);
+  border-radius: var(--radius);
+}
+
+.search:focus-within {
+  border-color: var(--color-cta);
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+  border: 0;
+  outline: 0; /* the yellow border on .search shows focus instead */
+  font-size: 18px;
+  font-weight: var(--font-weight-heavy);
+}
+
+.input::placeholder {
+  color: var(--color-text-soft);
+}
+
+.list {
+  position: absolute;
+  top: calc(100% + 1px);
+  left: -1px;
+  right: -1px;
+  z-index: 10;
+  margin: 0;
+  padding: var(--space-1) 0;
+  list-style: none;
+  background: var(--color-surface);
+  border: 1px solid var(--color-cta);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.4);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+}
+
+.active {
+  background: var(--color-bg-deep);
+}
+
+.thumb {
+  width: 40px;
+  height: 53px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-heavy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-heavy);
+  text-transform: uppercase;
+}
+
+.region {
+  color: var(--color-region);
+}
+
+.price {
+  font-weight: var(--font-weight-heavy);
+}
+
+@media (max-width: 768px) {
+  .search {
+    order: 1;
+    flex-basis: 100%;
+    height: 44px;
+  }
+
+  .input {
+    font-size: var(--font-size-md);
+  }
+}

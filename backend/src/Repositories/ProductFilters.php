@@ -14,7 +14,8 @@ use App\Http\HttpException;
  */
 final class ProductFilters
 {
-    public const SORTS = ['bestselling', 'price_asc', 'price_desc', 'newest'];
+    /** 'relevance' (best match first) only makes sense, and is only allowed, when searching. */
+    public const SORTS = ['relevance', 'bestselling', 'price_asc', 'price_desc', 'newest'];
     public const PAGE_SIZE = 24;
 
     /**
@@ -34,11 +35,18 @@ final class ProductFilters
 
     public static function fromQuery(array $query): self
     {
+        $search = trim(self::string($query, 'q'));
+
         // Not `?:` for defaults: PHP treats the string "0" as false, so "?page=0" would quietly become page 1.
         $sort = self::string($query, 'sort');
-        $sort = $sort === '' ? 'bestselling' : $sort;
+        if ($sort === '') {
+            $sort = $search === '' ? 'bestselling' : 'relevance';
+        }
         if (!in_array($sort, self::SORTS, true)) {
             throw new HttpException(400, 'sort must be one of: ' . implode(', ', self::SORTS));
+        }
+        if ($sort === 'relevance' && $search === '') {
+            throw new HttpException(400, 'sort=relevance needs a search term (q)');
         }
 
         $min = self::euros($query, 'min_price');
@@ -52,8 +60,6 @@ final class ProductFilters
         if (!ctype_digit($page) || (int) $page < 1) {
             throw new HttpException(400, 'page must be a whole number from 1');
         }
-
-        $search = trim(self::string($query, 'q'));
 
         return new self(
             search: $search === '' ? null : mb_substr($search, 0, 100),

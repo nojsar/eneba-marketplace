@@ -1,18 +1,11 @@
-import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import styles from './Header.module.css'
-import { CartIcon, SearchIcon, UserIcon } from './icons'
+import { CartIcon, UserIcon } from './icons'
+import { SearchBox } from './SearchBox'
 
 export function Header() {
-  const navigate = useNavigate()
-  const [query, setQuery] = useState('')
-
-  // Searching just opens the store with ?q=..., so search and the catalog share one page.
-  function handleSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const q = query.trim()
-    navigate(q ? `/store?q=${encodeURIComponent(q)}` : '/store')
-  }
+  const [params] = useSearchParams()
+  const urlQuery = params.get('q') ?? ''
 
   return (
     <header>
@@ -23,17 +16,9 @@ export function Header() {
           <span className={styles.demoTag}>demo</span>
         </Link>
 
-        <form role="search" className={styles.search} onSubmit={handleSearch}>
-          <SearchIcon className={styles.searchIcon} />
-          <input
-            type="search"
-            className={styles.searchInput}
-            placeholder="Search for games"
-            aria-label="Search for games"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </form>
+        {/* The key recreates the box whenever the URL's search changes (a reload, a shared
+            link, the back button), so the box always shows the search being displayed. */}
+        <SearchBox key={urlQuery} initialQuery={urlQuery} />
 
         <nav className={styles.actions} aria-label="Account">
           <Link to="/cart" className={styles.iconLink} aria-label="Cart">

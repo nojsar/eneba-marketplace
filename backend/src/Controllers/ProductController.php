@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Http\HttpException;
 use App\Http\Request;
 use App\Http\Response;
 use App\Repositories\ProductFilters;
@@ -31,6 +32,53 @@ final class ProductController
                 'platforms' => $this->products->platformCounts($filters),
                 'regions' => $this->products->regionCounts($filters),
             ],
+        ]);
+    }
+
+    /** GET /api/search/suggestions?q=eldn — the best few matches, shown under the header search box while typing. */
+    public function suggestions(Request $request): Response
+    {
+        $filters = ProductFilters::fromQuery(['q' => $request->query['q'] ?? '']);
+
+        // A single letter matches almost everything, so suggestions start at two.
+        if ($filters->search === null || mb_strlen($filters->search) < 2) {
+            return Response::json(['items' => []]);
+        }
+
+        return Response::json([
+            'items' => array_map(self::summary(...), $this->products->list($filters, limit: 6)),
+        ]);
+    }
+
+    /** GET /api/products/{slug} — the product page: details, every seller's offer, other platforms and regions. */
+    public function show(Request $request): Response
+    {
+        $product = $this->products->findBySlug($request->params['slug']);
+        if ($product === null) {
+            throw new HttpException(404, 'Product not found');
+        }
+
+        return Response::json([
+            'product' => self::summary($product) + [
+                'description' => $product['description'],
+                'releaseDate' => $product['release_date'],
+            ],
+            'offers' => array_map(fn (array $offer) => [
+                'id' => $offer['id'],
+                'priceCents' => $offer['price_cents'],
+                'stock' => $offer['stock'],
+                'seller' => [
+                    'name' => $offer['seller_name'],
+                    'ratingPercent' => (float) $offer['rating_percent'], // Postgres numeric arrives as a string
+                    'ratingCount' => $offer['rating_count'],
+                ],
+            ], $this->products->offers($product['id'])),
+            'otherListings' => array_map(fn (array $listing) => [
+                'slug' => $listing['slug'],
+                'platform' => $listing['platform_name'],
+                'region' => $listing['region_name'],
+                'lowestPriceCents' => $listing['lowest_price_cents'],
+            ], $this->products->otherListings($product)),
         ]);
     }
 

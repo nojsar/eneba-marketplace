@@ -14,6 +14,8 @@ final class ProductRepository
 {
     /** Sort keys map to fixed SQL; user input never reaches the ORDER BY. `id` makes the order stable across pages. */
     private const ORDER_BY = [
+        // Best match first: how closely the search term matches part of the name (0–1).
+        'relevance' => 'word_similarity(:rank, name) DESC, units_sold DESC, name, id',
         'bestselling' => 'units_sold DESC, name, id',
         'price_asc' => 'lowest_price_cents ASC NULLS LAST, name, id',
         'price_desc' => 'lowest_price_cents DESC NULLS LAST, name, id',
@@ -24,12 +26,15 @@ final class ProductRepository
     {
     }
 
-    /** One page of products matching the filters. */
-    public function list(ProductFilters $filters): array
+    /** One page of products matching the filters. A smaller $limit serves the search suggestions. */
+    public function list(ProductFilters $filters, int $limit = ProductFilters::PAGE_SIZE): array
     {
         [$where, $params] = $this->where($filters);
-        $params['limit'] = ProductFilters::PAGE_SIZE;
-        $params['offset'] = ($filters->page - 1) * ProductFilters::PAGE_SIZE;
+        if ($filters->sort === 'relevance') {
+            $params['rank'] = $filters->search;
+        }
+        $params['limit'] = $limit;
+        $params['offset'] = ($filters->page - 1) * $limit;
 
         $stmt = $this->db->pdo()->prepare(
             "SELECT * FROM product_listing
@@ -50,6 +55,51 @@ final class ProductRepository
         $stmt->execute($params);
 
         return (int) $stmt->fetchColumn();
+    }
+
+    /** One product with its description, or null if no product has this slug. */
+    public function findBySlug(string $slug): ?array
+    {
+        $stmt = $this->db->pdo()->prepare(
+            'SELECT l.*, p.description
+               FROM product_listing l
+               JOIN products p ON p.id = l.id
+              WHERE l.slug = :slug'
+        );
+        $stmt->execute(['slug' => $slug]);
+
+        return $stmt->fetch() ?: null;
+    }
+
+    /** Every seller's offer for a product with its stock: offers with stock first, then cheapest first. */
+    public function offers(int $productId): array
+    {
+        $stmt = $this->db->pdo()->prepare(
+            "SELECT *
+               FROM (SELECT o.id, o.price_cents, s.name AS seller_name, s.rating_percent, s.rating_count,
+                            (SELECT count(*) FROM product_keys k WHERE k.offer_id = o.id AND k.status = 'available') AS stock
+                       FROM offers o
+                       JOIN sellers s ON s.id = o.seller_id
+                      WHERE o.product_id = :product_id) offers
+              ORDER BY stock = 0, price_cents, seller_name" // false sorts before true: sold-out offers go last
+        );
+        $stmt->execute(['product_id' => $productId]);
+
+        return $stmt->fetchAll();
+    }
+
+    /** The same game on other platforms or in other regions, e.g. Elden Ring on PlayStation for the Steam page. */
+    public function otherListings(array $product): array
+    {
+        $stmt = $this->db->pdo()->prepare(
+            'SELECT slug, platform_name, region_name, lowest_price_cents
+               FROM product_listing
+              WHERE name = :name AND id <> :id
+              ORDER BY platform_name, region_name'
+        );
+        $stmt->execute(['name' => $product['name'], 'id' => $product['id']]);
+
+        return $stmt->fetchAll();
     }
 
     /** Every platform with the number of matching products, e.g. Steam (31). */
@@ -102,9 +152,21 @@ final class ProductRepository
         $params = [];
 
         if ($filters->search !== null) {
-            // Partial match anywhere in the name. % and _ typed by the user are escaped, so they match literally.
-            $conditions[] = 'name ILIKE :search';
-            $params['search'] = '%' . addcslashes($filters->search, '%_\\') . '%';
+            // Exact text first, typo matching only as a fallback (all can use the trigram index, see migration 002):
+            //   ILIKE  the typed text appears in the name          "hogwart"  → Hogwarts Legacy
+            // and only if NO product name contains the typed text:
+            //   <%     a typo inside a longer name (word_similarity ≥ 0.6)   "witchr"  → The Witcher 3: Wild Hunt
+            //   %      a typo across a short name  (similarity ≥ 0.3)        "palwrld" → Palworld
+            // Without the fallback rule, "elden" would also match "The Elder Scrolls" (one letter apart).
+            // % and _ typed by the user are escaped for ILIKE, so they match literally.
+            $conditions[] = '(name ILIKE :search_like
+                              OR (NOT EXISTS (SELECT 1 FROM products WHERE name ILIKE :search_like_any)
+                                  AND (:search_word <% name OR :search_whole % name)))';
+            $like = '%' . addcslashes($filters->search, '%_\\') . '%';
+            $params['search_like'] = $like;
+            $params['search_like_any'] = $like;
+            $params['search_word'] = $filters->search;
+            $params['search_whole'] = $filters->search;
         }
         if ($filters->platforms !== [] && $ignore !== 'platform') {
             $conditions[] = 'platform IN (' . $this->placeholders('platform', $filters->platforms, $params) . ')';

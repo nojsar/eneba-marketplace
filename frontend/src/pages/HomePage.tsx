@@ -21,7 +21,7 @@ export function HomePage() {
 }
 
 function describeHealth(state: ApiState<Health>): string {
-  if (state.status === 'loading') {
+  if (state.status === 'loading' || state.status === 'idle') {
     return 'Checking the API… the free server can take up to a minute to wake up.'
   }
   if (state.status === 'success') {

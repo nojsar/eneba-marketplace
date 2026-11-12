@@ -7,6 +7,7 @@ import { ProductCard } from '../components/ProductCard'
 import styles from './StorePage.module.css'
 
 const SORT_OPTIONS = [
+  { value: 'relevance', label: 'Best match' },
   { value: 'bestselling', label: 'Best-selling' },
   { value: 'price_asc', label: 'Price: low to high' },
   { value: 'price_desc', label: 'Price: high to low' },
@@ -25,6 +26,9 @@ export function StorePage() {
   // While a new page loads, keep showing the previous results (dimmed) instead of a blank grid.
   const data = state.status === 'success' ? state.data : state.status === 'loading' ? state.previous : undefined
   const search = params.get('q')
+  // Same defaults as the API: best match when searching, best-selling otherwise.
+  const defaultSort = search ? 'relevance' : 'bestselling'
+  const sortOptions = search ? SORT_OPTIONS : SORT_OPTIONS.filter((option) => option.value !== 'relevance')
 
   function update(changes: ParamChanges) {
     const next = new URLSearchParams(params)
@@ -57,10 +61,10 @@ export function StorePage() {
         <label className={styles.sort}>
           Sort by
           <select
-            value={params.get('sort') ?? 'bestselling'}
-            onChange={(event) => update({ sort: event.target.value === 'bestselling' ? null : event.target.value })}
+            value={params.get('sort') ?? defaultSort}
+            onChange={(event) => update({ sort: event.target.value === defaultSort ? null : event.target.value })}
           >
-            {SORT_OPTIONS.map((option) => (
+            {sortOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

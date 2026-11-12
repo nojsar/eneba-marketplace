@@ -28,6 +28,8 @@ try {
     $router = new Router();
     $router->get('/api/health', [new HealthController($db), 'show']);
     $router->get('/api/products', [$products, 'index']);
+    $router->get('/api/products/{slug}', [$products, 'show']);
+    $router->get('/api/search/suggestions', [$products, 'suggestions']);
 
     $response = $router->dispatch(Request::fromGlobals());
 } catch (HttpException $e) {

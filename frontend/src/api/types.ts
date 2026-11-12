@@ -21,6 +21,26 @@ export type ProductSummary = {
   offerCount: number
 }
 
+/** GET /api/search/suggestions */
+export type Suggestions = { items: ProductSummary[] }
+
+export type Offer = {
+  id: number
+  priceCents: number
+  /** Keys this seller has available right now. */
+  stock: number
+  seller: { name: string; ratingPercent: number; ratingCount: number }
+}
+
+/** GET /api/products/{slug} */
+export type ProductDetails = {
+  product: ProductSummary & { description: string; releaseDate: string }
+  /** Sellers with stock first, cheapest first. */
+  offers: Offer[]
+  /** The same game on other platforms or in other regions. */
+  otherListings: { slug: string; platform: string; region: string; lowestPriceCents: number | null }[]
+}
+
 /** GET /api/products */
 export type ProductList = {
   items: ProductSummary[]
