@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { apiGet } from './client'
 
 export type ApiState<T> =
-  | { status: 'loading' }
+  /** `previous` is the last successful answer, so a page can keep showing it while the next one loads. */
+  | { status: 'loading'; previous?: T }
   | { status: 'success'; data: T }
   | { status: 'error'; error: Error }
 
@@ -29,6 +30,10 @@ export function useApi<T>(path: string): ApiState<T> {
     }
   }, [path])
 
+  if (result?.path === path) {
+    return result.state
+  }
+
   // "Loading" is not stored: if the answer we hold is for another path, the new one is still on its way.
-  return result?.path === path ? result.state : { status: 'loading' }
+  return { status: 'loading', previous: result?.state.status === 'success' ? result.state.data : undefined }
 }

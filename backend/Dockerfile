@@ -26,3 +26,6 @@ RUN composer install --no-dev --no-interaction --no-autoloader --prefer-dist
 
 COPY . .
 RUN composer dump-autoload --no-dev --optimize
+
+# Migrate and seed (if empty), then start Apache. See docker/start.sh.
+CMD ["sh", "docker/start.sh"]

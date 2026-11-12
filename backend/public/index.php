@@ -7,12 +7,14 @@ declare(strict_types=1);
 // locally `composer serve` does the same with PHP's built-in server.
 
 use App\Controllers\HealthController;
+use App\Controllers\ProductController;
 use App\Database;
 use App\Env;
 use App\Http\HttpException;
 use App\Http\Request;
 use App\Http\Response;
 use App\Http\Router;
+use App\Repositories\ProductRepository;
 
 require __DIR__ . '/../vendor/autoload.php';
 
@@ -21,8 +23,11 @@ Env::load(__DIR__ . '/../.env');
 try {
     $db = new Database(Env::get('DATABASE_URL'));
 
+    $products = new ProductController(new ProductRepository($db));
+
     $router = new Router();
     $router->get('/api/health', [new HealthController($db), 'show']);
+    $router->get('/api/products', [$products, 'index']);
 
     $response = $router->dispatch(Request::fromGlobals());
 } catch (HttpException $e) {

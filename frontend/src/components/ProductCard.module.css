@@ -1,0 +1,88 @@
+.card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.card:hover {
+  border-color: var(--color-teal);
+}
+
+.image {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  background: var(--color-bg-deep); /* shown while the image loads */
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+}
+
+/* Two lines at most, like eneba.com's cards */
+.name {
+  min-height: 36px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-heavy);
+  line-height: 18px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-heavy);
+  text-transform: uppercase;
+}
+
+.region {
+  margin-left: var(--space-1);
+  color: var(--color-region);
+}
+
+/* Pushed to the bottom so prices line up across a row of cards */
+.priceBlock {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-2);
+}
+
+.from {
+  width: 100%;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.price {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-heavy);
+  line-height: 1.2;
+}
+
+.discount {
+  color: var(--color-success);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-heavy);
+}
+
+.soldOut {
+  margin-top: auto;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-heavy);
+}

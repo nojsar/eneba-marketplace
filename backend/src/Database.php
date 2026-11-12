@@ -43,9 +43,18 @@ final class Database
             $options['sslmode'] ?? 'prefer',
         );
 
-        return new PDO($dsn, urldecode($parts['user'] ?? ''), urldecode($parts['pass'] ?? ''), [
+        $pdo = new PDO($dsn, urldecode($parts['user'] ?? ''), urldecode($parts['pass'] ?? ''), [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,      // a failed query throws instead of returning false
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, // rows come back as ['column' => value]
         ]);
+
+        // Send each query and its parameters together instead of creating a named prepared
+        // statement first. Neon's pooler (PgBouncer) renames named statements, so PDO's
+        // clean-up "DEALLOCATE pdo_stmt_…" fails and silently aborts any open transaction:
+        // COMMIT then quietly rolls back. Values are still sent separately from the SQL,
+        // so this is just as safe against SQL injection. See docs/DECISIONS.md #12.
+        $pdo->setAttribute(PDO::PGSQL_ATTR_DISABLE_PREPARES, true);
+
+        return $pdo;
     }
 }
