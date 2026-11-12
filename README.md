@@ -4,7 +4,7 @@ A digital game-key marketplace in the style of [eneba.com](https://www.eneba.com
 
 **Live:** <https://eneba-marketplace-taupe.vercel.app> · API: <https://eneba-marketplace-api-3r9s.onrender.com/api/health>
 
-**Status:** Day 4 of 7: catalogue, store, typo-tolerant search, product pages, accounts and the block-based homepage. The free API server sleeps after 15 idle minutes, so the first request can take up to a minute.
+**Status:** Day 5 of 7: every part of the brief is built (store, search, product pages, homepage blocks, accounts, cart, Stripe test checkout, keys, order history). The free API server sleeps after 15 idle minutes, so the first request can take up to a minute.
 
 ## Architecture
 
@@ -58,6 +58,15 @@ Check: <http://localhost:5173> shows "API up · database up".
 | POST | `/api/auth/logout` | Deletes the session and the cookie |
 | GET | `/api/auth/me` | The logged-in user, or `{"user": null}` |
 
+| GET | `/api/cart?items=12:1,15:2` | Prices a cart (offer id : quantity): current prices, stock, total, problems |
+| POST | `/api/checkout` | `{items: [{offerId, quantity}]}`, signed in → creates the order, reserves keys, returns Stripe's payment URL |
+| POST | `/api/stripe/webhook` | Stripe only (signature verified): completed → paid, expired → released |
+| GET | `/api/orders` | Signed in: order history |
+| GET | `/api/orders/{id}` | Signed in, own orders only: one order, with keys once paid |
+
 POST bodies must be JSON (`Content-Type: application/json`); anything else gets a 415.
+
+### Payments (Stripe test mode)
+Set `APP_URL`, `STRIPE_SECRET_KEY` (a `sk_test_` key) and, in production, `STRIPE_WEBHOOK_SECRET`; see [backend/.env.example](backend/.env.example). The webhook endpoint is `https://<render-service>/api/stripe/webhook` with the events `checkout.session.completed` and `checkout.session.expired`. Pay with Stripe's test card `4242 4242 4242 4242`, any future expiry date and any CVC.
 
 In production, the container runs migrations and seeds an empty database on start ([backend/docker/start.sh](backend/docker/start.sh)).

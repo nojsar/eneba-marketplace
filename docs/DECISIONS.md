@@ -196,7 +196,44 @@ Postgres `pg_trgm` splits text into trigrams ("witcher" → `wit`, `itc`, `tch`,
 - **Banner images** are Steam's public `library_hero.jpg` images (checked to exist).
 - **Cut:** an admin screen to edit banners and blocks, personalised blocks ("Recommended for you"), and caching block responses.
 
-## Planned (recorded now, implemented later)
+## 20. Cart and checkout: the server prices everything, keys are reserved before payment (Day 5)
 
-- **Keys are reserved at checkout** (Day 5) with `SELECT ... FOR UPDATE SKIP LOCKED`, so two buyers cannot pay for the last key.
-- **Fulfilment is idempotent** (Day 5): the same function is called by the Stripe webhook and by the order page (which asks Stripe if the order is still pending), so a missed or repeated webhook is harmless.
+**The cart is ids and quantities in localStorage.** Visitors can fill a cart without an account, and it survives reloads. Everything the cart page shows (names, current prices, stock, total) comes from `GET /api/cart?items=12:1,15:2`, a GET because it only reads. Editing localStorage cannot change a price: checkout looks every price up again.
+
+**Checkout (`POST /api/checkout`, login required) in two steps:**
+1. **One database transaction:** create a `pending` order, copy each line's current price into `order_items`, and **reserve** the keys:
+   ```sql
+   UPDATE product_keys SET status = 'reserved', order_item_id = :item
+    WHERE id IN (SELECT id FROM product_keys WHERE offer_id = :offer AND status = 'available'
+                  ORDER BY id LIMIT :quantity FOR UPDATE SKIP LOCKED)
+   ```
+   If any line gets fewer keys than asked for, the transaction throws a 409 and **everything rolls back**, including keys already reserved for earlier lines.
+2. **After the commit, create the Stripe Checkout session.** No database locks are held while waiting on another company's API. If Stripe fails, the order is released straight away (cancelled, keys back on sale).
+
+- **Why `FOR UPDATE SKIP LOCKED`:** `FOR UPDATE` locks the chosen key rows until the transaction ends, so no other checkout can take them. `SKIP LOCKED` makes a second checkout pick other free keys instead of waiting. **Tested with two real connections:** while buyer A held all 3 keys (uncommitted), buyer B asked for 1 and got 0 in 70 ms. After A rolled back, B got 1.
+- **Why reserve before paying:** otherwise two buyers could both pay for the last key, and one would need a refund. The cost: keys are held for 30 minutes (Stripe's minimum session lifetime) while the buyer is on the payment page.
+- **Limits:** quantity 1–10 per line, at most 20 lines. Validated on the server; the frontend only offers what is in stock.
+- **One currency (EUR).** Cents everywhere, and Stripe also takes cents.
+
+## 21. Payment with Stripe Checkout, confirmed two ways, fulfilled once (Day 5)
+
+- **Stripe-hosted Checkout:** the buyer types card details on Stripe's page, never ours, so the app never handles card data. Test mode only. The SDK (`stripe/stripe-php`) is used in exactly one class, `StripeGateway`, which returns plain arrays. The rest of the code does not know Stripe's types.
+- **Cards only** (`payment_method_types: ['card']`): card payments are confirmed instantly, so "checkout completed" always means "paid". Delayed methods like bank transfers would need extra event types.
+- **Two ways to learn the result, both calling the same `fulfil()`:**
+  1. **Webhook** (`POST /api/stripe/webhook`, Stripe → Render directly): `checkout.session.completed` fulfils, `checkout.session.expired` releases. The SDK verifies the `Stripe-Signature` header (HMAC-SHA256 of the timestamp and the exact body, using our signing secret) and rejects requests older than 5 minutes, so nobody else can mark orders as paid.
+  2. **The order page:** `GET /api/orders/{id}` asks Stripe about a still-pending order first. Returning from payment therefore shows the keys even if the webhook is slow, and local development works without a webhook (Stripe cannot reach localhost).
+- **Idempotent fulfilment:** `UPDATE orders SET status = 'paid' … WHERE id = ? AND status = 'pending'` changes the order at most once. Only the call that actually changed it sells the keys. A Stripe retry, the order page and the webhook can all arrive, even at the same moment: the second waits for the first's row lock, then finds the order no longer pending. **Tested:** fulfil twice gives 1 key sold, and a later release cannot cancel a paid order.
+- **Expired or abandoned checkouts** cancel the order and put the keys back on sale (`release()`, also idempotent). A `GET` that can write is unusual, but this one only finishes a state change that already happened at Stripe, and repeating it changes nothing.
+- **Keys are shown only for paid orders and only to their owner.** Someone else's order id answers 404, not 403, so it does not even reveal that the order exists.
+- **Payment settings are optional at start-up:** without `STRIPE_SECRET_KEY` / `APP_URL` / `STRIPE_WEBHOOK_SECRET`, browsing and accounts still work, and payment endpoints answer a clear 503.
+- **Cut:** refunds, invoices and VAT, emailing keys, cancelling a checkout before it expires (it expires by itself after 30 minutes), and encrypting key codes at rest (#13).
+
+## 22. Cart, order and history pages (Day 5)
+
+- **"Add to cart" sits on each seller's offer**, because the buyer chooses a seller, not just a game. Once added, the button becomes "In cart ✓" and links to the cart. The header shows a count badge.
+- **Cart page:** server prices and stock, quantity menus limited to what is in stock, problems ("Only 2 left") marked and blocking checkout. While a change reloads the prices, the old ones stay visible, dimmed. Visitors see "Log in to check out", which goes to `/login?next=/cart` and comes back.
+- **Order page** (`/orders/:id`, Stripe's success URL): while the order is pending it asks again every 2 seconds, up to 15 times. It works by adding `?check=N` to the path, which makes `useApi` fetch again; the API ignores the parameter. Paid orders show each key with a copy button. Only then are the bought offers removed from the cart, so a cancelled payment never empties it.
+- **Order history** on the account page: status, date, total, and a link to each order.
+- **The cart is per browser** (localStorage). It is not synced across devices or tabs, a deliberate cut (#1).
+
+## Planned (recorded now, implemented later)
