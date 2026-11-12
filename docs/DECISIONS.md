@@ -38,7 +38,11 @@ Size target: ~1,000 lines of PHP and ~2,000 lines of TypeScript/CSS, so every li
 
 The frontend calls `/api/...` on its own domain. `frontend/vercel.json` forwards those requests to Render in production; `frontend/vite.config.ts` forwards them to `localhost:8000` in development.
 
-- **Why:** the login cookie (Day 4) is then a first-party cookie, which works in every browser. A cookie set by `onrender.com` while the page is on `vercel.app` would be a third-party cookie, and Safari blocks those. There is also no CORS to configure.
+- **Why:** the login cookie (Day 4) is then a first-party cookie, which works in every browser. `vercel.app` and `onrender.com` are both on the Public Suffix List, so the page and a directly-called API would be different *sites*. A cookie set by the API would then be a third-party cookie:
+  - it is only sent at all if marked `SameSite=None; Secure`, the fetch uses `credentials: 'include'`, and the API answers with `Access-Control-Allow-Origin: <exact origin>` + `Access-Control-Allow-Credentials: true`;
+  - even then Safari (and Brave, and Chrome Incognito) block third-party cookies by default: login returns 200, but the next request arrives without the cookie, so the user looks logged out;
+  - `SameSite=None` also means any other website can make requests that carry the cookie, so we would need CSRF tokens. With one origin, `SameSite=Lax` blocks that by default.
+- There is also no CORS to configure and no extra preflight `OPTIONS` request before every JSON `POST`.
 - **Cost:** one extra hop through Vercel. Stripe's webhook (Day 5) calls Render directly because it is server-to-server.
 - **Rejected:** calling Render directly with a token in `localStorage`. Simpler to set up, but any XSS bug could read the token.
 - **To verify after deploying:** that Vercel's forwarding waits long enough for a sleeping Render instance to wake up. If it does not, the fallback is the rejected option above.
@@ -58,7 +62,7 @@ Code throws `HttpException(404, 'Not found')` for errors the client should see. 
 
 `Database` takes the `DATABASE_URL` Neon provides and opens the PDO connection on the first query, so requests that never touch the database do not pay for a connection. PDO is set to throw on SQL errors and return rows as associative arrays.
 
-Locally we use a separate Neon **branch** (`dev`), so no local Postgres or Docker is needed and the production data stays clean.
+Locally we use a separate Neon **branch** (`dev`), so no local Postgres or Docker is needed and the `production` branch's data stays clean.
 
 ## 7. Render runs the API from a Dockerfile (Day 1)
 
@@ -74,6 +78,16 @@ Render has no built-in PHP runtime. The image is the official `php:8.3-apache` p
 ## 9. Loading state is derived, not stored (Day 1)
 
 `useApi` stores the latest answer together with the path it belongs to. If the stored answer is for a different path, the hook reports `loading`. This avoids calling `setState` synchronously inside an effect (flagged by the linter as an extra render) and ignores answers that arrive after the user has moved on.
+
+## 10. Connect through Neon's pooler, not directly (Day 1)
+
+Both `DATABASE_URL`s use Neon's pooled endpoint (host contains `-pooler`), which runs PgBouncer in front of Postgres.
+
+- **Why:** PHP shares nothing between requests, so every request opens a new connection and closes it at the end. Without a pooler, each of those is a real Postgres connection: a new server process with its own memory, limited by `max_connections` (about 100 on Neon's smallest compute). Apache can run up to 150 workers by default, so a burst of traffic could hit `too many clients` errors. PgBouncer accepts up to 10,000 client connections and lends a small set of real Postgres connections to them, one transaction at a time.
+- **What it does not save:** the TLS handshake and login to the pooler still happen per request. What disappears is starting a new Postgres process per request and the risk of running out of connections.
+- **Trade-off (transaction mode):** anything tied to a session, not a transaction, is unreliable: `SET` variables, `LISTEN/NOTIFY`, session-level advisory locks, temporary tables. We use none of them. Row locks (`SELECT ... FOR UPDATE`) live inside a transaction, so key reservation is unaffected.
+- **Verified (Day 1):** PDO's server-side prepared statements (prepare once, execute many) and transactions work through Neon's pooler, and `pg_trgm` is available (Postgres 18).
+- **Honest note:** at demo traffic a direct connection would also work. Pooling is the correct default for PHP's request model and costs nothing here.
 
 ## Planned (recorded now, implemented later)
 
