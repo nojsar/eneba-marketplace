@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://eneba-marketplace-api.onrender.com/api/:path*"
+      "destination": "https://eneba-marketplace-api-3r9s.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",

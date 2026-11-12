@@ -2,7 +2,9 @@
 
 A digital game-key marketplace in the style of [eneba.com](https://www.eneba.com), built for the Eneba internship assignment.
 
-**Status:** Day 1 of 7, hosting skeleton. The live URL is added here once deployed.
+**Live:** <https://eneba-marketplace-taupe.vercel.app> · API: <https://eneba-marketplace-api-3r9s.onrender.com/api/health>
+
+**Status:** Day 1 of 7, hosting skeleton. The free API server sleeps after 15 idle minutes, so the first request can take up to a minute.
 
 ## Architecture
 
