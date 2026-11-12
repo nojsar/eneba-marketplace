@@ -1,0 +1,44 @@
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.title {
+  font-size: var(--font-size-xl);
+}
+
+/* One row that scrolls sideways; cards snap into place, like a carousel without JavaScript */
+.items {
+  margin: 0;
+  padding: 0 0 var(--space-2);
+  list-style: none;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 200px;
+  gap: var(--space-4);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+}
+
+.item {
+  scroll-snap-align: start;
+}
+
+/* Outlined white button, centred under the row, like eneba.com's "See all" */
+.seeAll {
+  align-self: center;
+  min-width: 194px;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-text);
+  font-size: 15px;
+  font-weight: var(--font-weight-heavy);
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .items {
+    grid-auto-columns: 160px;
+    gap: var(--space-2);
+  }
+}

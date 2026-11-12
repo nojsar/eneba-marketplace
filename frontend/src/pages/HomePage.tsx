@@ -1,34 +1,32 @@
-import { ApiError } from '../api/client'
-import { useApi, type ApiState } from '../api/useApi'
-import styles from './Message.module.css'
+import type { HomeLayout } from '../api/types'
+import { useApi } from '../api/useApi'
+import { HomeBlock } from '../blocks/HomeBlock'
+import styles from './HomePage.module.css'
 
-type Health = { api: 'up'; database: 'up' | 'down' }
-
-// Temporary Day 1 homepage: proves the chain browser → Vercel → Render → Neon works.
-// Day 4 replaces it with the homepage built from backend blocks.
+/**
+ * The homepage is whatever GET /api/home says it is: a list of blocks, each with a
+ * component and an endpoint for its content. Nothing about the blocks, their order,
+ * titles or products is written in the frontend.
+ */
 export function HomePage() {
-  const health = useApi<Health>('/health')
+  const layout = useApi<HomeLayout>('/home')
+
+  if (layout.status === 'error') {
+    return (
+      <p className={styles.message} role="alert">
+        Could not load the homepage: {layout.error.message}
+      </p>
+    )
+  }
+  if (layout.status !== 'success') {
+    return <p className={styles.message}>Loading… the free server can take up to a minute to wake up.</p>
+  }
 
   return (
-    <section className={styles.message}>
-      <h1 className={styles.title}>Marketplace under construction</h1>
-      <p className={styles.text}>The store, search, product pages and checkout are on their way.</p>
-      <p className={styles.note} role="status">
-        {describeHealth(health)}
-      </p>
-    </section>
+    <div className={styles.home}>
+      {layout.data.blocks.map((block) => (
+        <HomeBlock key={block.id} block={block} />
+      ))}
+    </div>
   )
-}
-
-function describeHealth(state: ApiState<Health>): string {
-  if (state.status === 'loading' || state.status === 'idle') {
-    return 'Checking the API… the free server can take up to a minute to wake up.'
-  }
-  if (state.status === 'success') {
-    return 'API up · database up'
-  }
-  if (state.error instanceof ApiError && state.error.status === 503) {
-    return 'API up · database unreachable'
-  }
-  return `API unreachable (${state.error.message})`
 }

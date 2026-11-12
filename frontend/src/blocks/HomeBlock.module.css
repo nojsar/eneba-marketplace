@@ -1,0 +1,21 @@
+.heroPlaceholder,
+.railPlaceholder {
+  background: var(--color-surface);
+  opacity: 0.5;
+}
+
+.heroPlaceholder {
+  height: 360px;
+}
+
+.railPlaceholder {
+  height: 400px;
+}
+
+.error {
+  padding: var(--space-4);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}

@@ -1,4 +1,5 @@
 import { Link, useSearchParams } from 'react-router'
+import { useAuth } from '../state/authContext'
 import styles from './Header.module.css'
 import { CartIcon, UserIcon } from './icons'
 import { SearchBox } from './SearchBox'
@@ -6,6 +7,7 @@ import { SearchBox } from './SearchBox'
 export function Header() {
   const [params] = useSearchParams()
   const urlQuery = params.get('q') ?? ''
+  const { user, loading } = useAuth()
 
   return (
     <header>
@@ -24,12 +26,20 @@ export function Header() {
           <Link to="/cart" className={styles.iconLink} aria-label="Cart">
             <CartIcon />
           </Link>
-          <span className={styles.account}>
-            <UserIcon />
-            <Link to="/login">Log in</Link>
-            <span className={styles.divider} aria-hidden="true">|</span>
-            <Link to="/register">Register</Link>
-          </span>
+          {/* Nothing until the session check answers, so "Log in" never flashes for a logged-in user */}
+          {loading ? null : user ? (
+            <Link to="/account" className={styles.account} title={user.email}>
+              <UserIcon />
+              <span className={styles.email}>{user.email}</span>
+            </Link>
+          ) : (
+            <span className={styles.account}>
+              <UserIcon />
+              <Link to="/login">Log in</Link>
+              <span className={styles.divider} aria-hidden="true">|</span>
+              <Link to="/register">Register</Link>
+            </span>
+          )}
         </nav>
       </div>
 

@@ -41,6 +41,25 @@ export type ProductDetails = {
   otherListings: { slug: string; platform: string; region: string; lowestPriceCents: number | null }[]
 }
 
+/** One entry of GET /api/home: which component to draw and where to fetch its content. */
+export type HomeBlockInfo = {
+  id: number
+  title: string | null
+  component: string
+  /** Path under /api, e.g. "/blocks/best_sellers" */
+  source: string
+}
+
+export type HomeLayout = { blocks: HomeBlockInfo[] }
+
+export type Banner = { title: string; subtitle: string; imageUrl: string; ctaLabel: string; ctaUrl: string }
+
+/** Content of a "hero" block */
+export type HeroContent = { banners: Banner[] }
+
+/** Content of a "product_rail" block */
+export type RailContent = { items: ProductSummary[]; seeAllUrl: string | null }
+
 /** GET /api/products */
 export type ProductList = {
   items: ProductSummary[]

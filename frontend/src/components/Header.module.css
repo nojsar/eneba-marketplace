@@ -57,6 +57,13 @@
   color: var(--color-text-muted);
 }
 
+/* Long emails are cut with "…" instead of pushing the header apart */
+.email {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .categories {
   background: var(--color-bg-deep);
 }
