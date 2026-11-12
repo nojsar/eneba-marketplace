@@ -139,6 +139,35 @@ The service names `eneba-marketplace-api.onrender.com` and `eneba-marketplace.ve
 - **While new results load, the old ones stay on screen, dimmed** (`useApi` returns the previous data with `loading`), instead of flashing an empty grid on every click.
 - Search is a plain `ILIKE` partial match for now. Day 3 adds typo tolerance.
 
+## 16. Search: exact text first, typo matching as the fallback (Day 3)
+
+Postgres `pg_trgm` splits text into trigrams ("witcher" → `wit`, `itc`, `tch`, ...) and measures how many two strings share. A GIN trigram index on `products.name` (migration 002) serves all three ways we match:
+
+| Operator | Matches | Example |
+|---|---|---|
+| `name ILIKE '%…%'` | the typed text appears in the name | `hogwart` → Hogwarts Legacy |
+| `q <% name` | a typo inside a longer name (word similarity ≥ 0.6) | `witchr` → The Witcher 3: Wild Hunt |
+| `q % name` | a typo across a short name (whole-name similarity ≥ 0.3) | `palwrld` → Palworld |
+
+- **Why both typo operators:** word similarity alone missed one-letter typos in short names (`palwrld`, `factrio`, `terarria` all scored 0.50–0.55). Whole-name similarity alone misses typos in long names (`witchr` vs. "The Witcher 3: Wild Hunt" scores only 0.21). Probing 19 queries showed `%` added exactly those three games and no unwanted matches.
+- **Exact text first:** the typo operators only apply when **no** product name contains the typed text (`NOT EXISTS (… ILIKE …)`). Without this, `elden` also matched "The **Elder** Scrolls" (one letter apart) and, sorted by price, Skyrim came first. Now `elden` finds only Elden Ring, `elder` only Skyrim, and `eldn ring` falls back to typo matching.
+- **Ranking:** when searching, the default sort is `relevance`: `word_similarity` (0–1), then best-selling. Any other sort is still allowed; `relevance` without a search term is a 400.
+- **Default thresholds, no `SET`:** the thresholds are session settings, and #10 explains why session settings are unreliable through the pooler. The defaults happened to fit.
+- **Tested queries:** `witchr`, `cyberpnk`, `eldn ring`, `baldurs gate`, `red ded`, `stardew valey`, `palwrld`, `god of war ragnarok` (no ö) all find their game; `zelda`, `mario`, `gta`, `fifa` find nothing.
+- **Known limits:** abbreviations (`gta`, `cod`) would need a keywords/aliases column. `witcher wild hunt` (missing "3:") also matches Monster Hunter **Wild**s, ranked below the Witcher. Search covers names only, not descriptions.
+- **Rejected:** a search service (Meilisearch, Algolia): better ranking and synonyms, but another free-tier service and a sync job, for a 48-product catalogue (#1).
+
+## 17. Header suggestions and the product page (Day 3)
+
+- **Suggestions** (`GET /api/search/suggestions?q=`) reuse the store query with `relevance` and a limit of 6, so the dropdown and the results page can never disagree. They start at two letters, and the request waits until typing pauses for 250 ms (`useDebouncedValue`), so typing "elden" costs one request, not five.
+- **Accessible combobox:** the input keeps focus while arrow keys move a highlight (`aria-activedescendant`), Enter opens the highlighted product or, with nothing highlighted, the full results, and Escape closes the list. Options react on `mousedown` with `preventDefault`, so the input's blur does not close the list before the click lands.
+- **The search box follows the URL:** it is keyed on `?q=`, so after a reload, a shared link or the back button it shows the search on screen. Picking a product empties it.
+- **`useApi(null)`** means "don't request anything" (status `idle`), used before two letters are typed.
+- **Product page** (`GET /api/products/{slug}`): details, every seller's offer with stock and rating, sorted with stock first and then cheapest, so the first offer is the "Best price". It also links the same game on other platforms and regions. Sold-out offers stay visible, dimmed, so the comparison is honest. Unknown slugs return 404 and show the not-found page.
+- **Scroll to top** when the path changes (not the query, so store filters do not jump).
+- In development every product request appears twice: React's StrictMode mounts components twice on purpose. `useApi`'s `cancelled` flag ignores the first answer; production builds request once.
+- **"Add to cart"** buttons on offers come with the cart on Day 5, rather than shipping buttons that do nothing.
+
 ## Planned (recorded now, implemented later)
 
 - **Keys are reserved at checkout** (Day 5) with `SELECT ... FOR UPDATE SKIP LOCKED`, so two buyers cannot pay for the last key.
