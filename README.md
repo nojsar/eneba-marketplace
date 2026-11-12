@@ -4,7 +4,7 @@ A digital game-key marketplace in the style of [eneba.com](https://www.eneba.com
 
 **Live:** <https://eneba-marketplace-taupe.vercel.app> · API: <https://eneba-marketplace-api-3r9s.onrender.com/api/health>
 
-**Status:** Day 1 of 7, hosting skeleton. The free API server sleeps after 15 idle minutes, so the first request can take up to a minute.
+**Status:** Day 2 of 7: catalogue and store. The free API server sleeps after 15 idle minutes, so the first request can take up to a minute.
 
 ## Architecture
 
@@ -30,6 +30,8 @@ Requirements: PHP 8.3 with `pdo_pgsql`, Composer, Node 24. No Docker or local Po
 cd backend
 composer install
 cp .env.example .env     # then paste your Neon dev-branch URL into .env
+composer migrate         # create or update the tables
+composer seed            # demo data (composer seed -- --fresh wipes and reseeds)
 composer serve           # API on http://localhost:8000
 ```
 
@@ -46,3 +48,6 @@ Check: <http://localhost:5173> shows "API up · database up".
 | Method | Path | Description |
 |---|---|---|
 | GET | `/api/health` | API status and database reachability (503 if the database is down) |
+| GET | `/api/products` | Store: one page of products plus filter counts. Query: `q`, `platform` and `region` (comma-separated slugs), `min_price` / `max_price` (euros), `sort` (`bestselling`, `price_asc`, `price_desc`, `newest`), `page` |
+
+In production, the container runs migrations and seeds an empty database on start ([backend/docker/start.sh](backend/docker/start.sh)).
