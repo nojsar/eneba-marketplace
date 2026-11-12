@@ -4,7 +4,7 @@ A digital game-key marketplace in the style of [eneba.com](https://www.eneba.com
 
 **Live:** <https://eneba-marketplace-taupe.vercel.app> · API: <https://eneba-marketplace-api-3r9s.onrender.com/api/health>
 
-**Status:** Day 3 of 7: catalogue, store, typo-tolerant search and product pages. The free API server sleeps after 15 idle minutes, so the first request can take up to a minute.
+**Status:** Day 4 of 7: catalogue, store, typo-tolerant search, product pages, accounts and the block-based homepage. The free API server sleeps after 15 idle minutes, so the first request can take up to a minute.
 
 ## Architecture
 
@@ -51,5 +51,13 @@ Check: <http://localhost:5173> shows "API up · database up".
 | GET | `/api/products` | Store: one page of products plus filter counts. Query: `q` (typos allowed), `platform` and `region` (comma-separated slugs), `min_price` / `max_price` (euros), `sort` (`relevance` when searching, `bestselling`, `price_asc`, `price_desc`, `newest`), `page` |
 | GET | `/api/products/{slug}` | Product page: details, every seller's offer with stock, other platforms/regions (404 if unknown) |
 | GET | `/api/search/suggestions?q=` | Up to 6 best matches for the header search (needs 2+ letters) |
+| GET | `/api/home` | Homepage layout: blocks in order, each with its component and content endpoint |
+| GET | `/api/blocks/{name}` | One block's content: `hero_banners`, `best_sellers`, `deals` |
+| POST | `/api/auth/register` | `{email, password}` → creates the account and logs in (sets the session cookie) |
+| POST | `/api/auth/login` | `{email, password}` → sets the session cookie; 401 on wrong credentials |
+| POST | `/api/auth/logout` | Deletes the session and the cookie |
+| GET | `/api/auth/me` | The logged-in user, or `{"user": null}` |
+
+POST bodies must be JSON (`Content-Type: application/json`); anything else gets a 415.
 
 In production, the container runs migrations and seeds an empty database on start ([backend/docker/start.sh](backend/docker/start.sh)).

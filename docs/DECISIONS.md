@@ -168,8 +168,35 @@ Postgres `pg_trgm` splits text into trigrams ("witcher" → `wit`, `itc`, `tch`,
 - In development every product request appears twice: React's StrictMode mounts components twice on purpose. `useApi`'s `cancelled` flag ignores the first answer; production builds request once.
 - **"Add to cart"** buttons on offers come with the cart on Day 5, rather than shipping buttons that do nothing.
 
+## 18. Accounts: database sessions in an httpOnly cookie (Day 4)
+
+- **Passwords:** `password_hash()` with `PASSWORD_DEFAULT` (bcrypt, random salt, cost 10) and `password_verify()`. Length 8–72 bytes: bcrypt ignores everything after byte 72, so longer passwords are refused rather than silently cut.
+- **Sessions are rows, not JWTs.** Login creates a random 32-byte token (`random_bytes`). The cookie holds the token, and the `sessions` table holds only its **SHA-256 hash**, so a leaked table cannot log anyone in. Logout deletes the row, so it takes effect immediately, which a JWT cannot do without a blocklist. Sessions expire after 30 days. A new token is issued on every login, so a planted or old token is never reused.
+- **Why SHA-256 and not bcrypt for tokens:** the token is 256 random bits, so it cannot be guessed and does not need a slow hash. A fast hash also allows the indexed lookup `WHERE token_hash = …`.
+- **Cookie flags:** `HttpOnly` (JavaScript cannot read it, so an XSS bug cannot steal the session; verified `document.cookie` is empty), `Secure` (HTTPS only; browsers allow it on localhost), `SameSite=Lax` (not sent on requests other sites start, apart from plain link clicks), `Path=/`.
+- **CSRF, two layers:** `SameSite=Lax`, and the API only accepts `application/json` bodies (415 otherwise). An HTML form on another site cannot send JSON, and `fetch` from another origin would need a CORS preflight that we never answer.
+- **No account fishing:** login gives the same message for an unknown email and a wrong password, and runs `password_verify` against a dummy hash for unknown emails so both take the same time (measured locally: ~660–736 ms vs ~665–695 ms). Registration does reveal that an email is taken (409). Most shops accept that trade-off for a clear sign-up error.
+- **One account per email is the database's job:** a `UNIQUE` constraint. The service turns SQLSTATE `23505` into a 409, so two sign-ups racing with the same email cannot both succeed (a "check, then insert" could).
+- **`GET /api/auth/me` returns `{"user": null}` (200) for visitors.** Asking "who am I?" is not an error. Protected endpoints (checkout and orders, Day 5) answer 401 via `AuthService::requireUser()`.
+- **Frontend:** `AuthProvider` asks `/auth/me` once per page load (the cookie is invisible to JavaScript) and shares the user via context. The header shows nothing until that answer arrives, so "Log in" never flashes for a logged-in user. `RequireAuth` sends visitors to `/login?next=…` and back afterwards. It only decides what the browser shows; the API's 401 is the real protection.
+- **Safe redirects:** `next` must be a path inside the app (starts with `/`, not `//` or `/\`), so `/login?next=//evil.example` cannot bounce people to another site after logging in.
+- **Bug found in testing:** "Log out" on the account page landed on the login page. Clearing the user re-rendered `RequireAuth` (still guarding `/account`), which redirected to login before `navigate('/')` ran. Fix: navigate away first, then log out.
+- **Cut:** email verification, password reset, rate limiting on login, "log out everywhere", and a clean-up job for expired session rows (they are ignored when they expire).
+
+## 19. Homepage: the backend decides the layout and each block's content (Day 4)
+
+`GET /api/home` returns the blocks to draw, in order: `{ id, title, component, source }`. The frontend then fetches each block's `source` (`GET /api/blocks/{name}`) and draws it with the named component. Nothing about the blocks, their order, titles, banners or products is in the frontend.
+
+- **Three blocks, two components.** `hero_banners` reads the `banners` table and draws as `hero`. `best_sellers` (most units sold, in stock) and `deals` (smallest price ÷ list price) both draw as `product_rail`. Component (how it looks) and provider (where the data comes from) are separate.
+- **"Its own backend service"** (the brief) is implemented as one PHP class per block behind its own endpoint, each running its own query, rather than one deployment per block (#1). The boundary is the same: the frontend only knows a URL per block, so any block could move to a separate service without a frontend change.
+- **Each block loads and fails on its own.** All blocks request in parallel (checked in the browser's network timeline). An error shows a small "Could not load …" for that block only. An unknown provider in `home_blocks` is skipped and logged, and an unknown `component` is skipped by the frontend, so a newer backend cannot crash an older frontend.
+- **Layout as data:** `home_blocks` (provider, title, position, is_active) and `banners` are tables. Reordering, renaming or switching off a block is an `UPDATE`, not a deploy. Their starting rows ship with migration 004, because every environment needs them (the demo seed only runs on an empty catalogue).
+- **Placeholders** of roughly the final height while blocks load, so the page does not jump.
+- **Rails scroll sideways** with CSS scroll-snap: a carousel without JavaScript.
+- **Banner images** are Steam's public `library_hero.jpg` images (checked to exist).
+- **Cut:** an admin screen to edit banners and blocks, personalised blocks ("Recommended for you"), and caching block responses.
+
 ## Planned (recorded now, implemented later)
 
 - **Keys are reserved at checkout** (Day 5) with `SELECT ... FOR UPDATE SKIP LOCKED`, so two buyers cannot pay for the last key.
 - **Fulfilment is idempotent** (Day 5): the same function is called by the Stripe webhook and by the order page (which asks Stripe if the order is still pending), so a missed or repeated webhook is harmless.
-- **Session tokens are random, and only their SHA-256 hash is stored** (Day 4). Logout deletes the row; a database leak does not leak working sessions.
