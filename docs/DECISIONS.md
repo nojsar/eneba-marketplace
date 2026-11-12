@@ -45,7 +45,7 @@ The frontend calls `/api/...` on its own domain. `frontend/vercel.json` forwards
 - There is also no CORS to configure and no extra preflight `OPTIONS` request before every JSON `POST`.
 - **Cost:** one extra hop through Vercel. Stripe's webhook (Day 5) calls Render directly because it is server-to-server.
 - **Rejected:** calling Render directly with a token in `localStorage`. Simpler to set up, but any XSS bug could read the token.
-- **To verify after deploying:** that Vercel's forwarding waits long enough for a sleeping Render instance to wake up. If it does not, the fallback is the rejected option above.
+- **Verified (12 Nov):** after 17 idle minutes (Render's free plan sleeps after 15), a request through Vercel waited for Render to wake and returned 200 after **13.7 s**, with no timeout. Warm requests: **0.50 s** through Vercel vs **0.32 s** straight to Render, so the extra hop costs roughly 0.2 s (one sample each, both servers in Frankfurt). Render says a wake-up can take up to about a minute; a wake-up that slow was not observed. Before a demo, open `/api/health` once to wake the server.
 
 ## 4. Plain PHP, no framework (Day 1)
 
@@ -88,6 +88,10 @@ Both `DATABASE_URL`s use Neon's pooled endpoint (host contains `-pooler`), which
 - **Trade-off (transaction mode):** anything tied to a session, not a transaction, is unreliable: `SET` variables, `LISTEN/NOTIFY`, session-level advisory locks, temporary tables. We use none of them. Row locks (`SELECT ... FOR UPDATE`) live inside a transaction, so key reservation is unaffected.
 - **Verified (Day 1):** PDO's server-side prepared statements (prepare once, execute many) and transactions work through Neon's pooler, and `pg_trgm` is available (Postgres 18).
 - **Honest note:** at demo traffic a direct connection would also work. Pooling is the correct default for PHP's request model and costs nothing here.
+
+## 11. A deploy check reads the response body, not just the status (Day 1)
+
+The service names `eneba-marketplace-api.onrender.com` and `eneba-marketplace.vercel.app` already belonged to another project, so our services got suffixed URLs. The first `vercel.json` pointed at the taken name, and production `/api/health` returned **200** from someone else's API. Only the body (`{"status":"ok",...}` instead of our `{"api":"up","database":"up"}`) gave it away. Deploy checks therefore compare the body, and the real URLs are recorded in the README.
 
 ## Planned (recorded now, implemented later)
 
